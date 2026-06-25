@@ -1,82 +1,99 @@
+
+import cv2
 import numpy as np
 # Завдання 1
-arr = np.arange(1, 11)
+img = cv2.imread("data/lesson1/Lenna.png")
 
-print("Масив:", arr)
-print("Розмір:", arr.shape)
-print("Тип:", arr.dtype)
 
-arr = arr.reshape(5, 2)
+print("Размер (shape):", img.shape)
 
-print(arr)
-print("Розмір:", arr.shape)
-print("Тип:", arr.dtype)
+print("Тип данных:", img.dtype)
+
+print("Минимум:", np.min(img))
+print("Максимум:", np.max(img))
+
+cv2.imshow("Lenna Image", img)
+
+cv2.waitKey(0)
+cv2.destroyAllWindows()
 # Завдання 2
 
-arr = np.array([
-    [1, 2, 3, 4],
-    [5, 6, 7, 8],
-    [9, 10, 11, 12]
-])
+img = cv2.imread("data/lesson1/Lenna.png")
 
-print(arr[1, 2])
-print(arr[:,-1])
-print(arr[:, 2:])
-print(arr[:2, 2:])
-arr[:2, 2:] = -1
-print(arr)
-arr[:, 0] = arr[:, 1]
-print(arr)
+h, w = img.shape[:2]
 
-# Завдання 3
+top_left = img[0:50, 0:100]
 
-mask = arr > 6
+center_x, center_y = w // 2, h // 2
+center = img[center_y-50:center_y+50, center_x-50:center_x+50]
 
-print("Маска:")
-print(mask)
+top_half = img[0:h//2, :]
 
+bottom_half = img[h//2:, :]
 
-print("Кількість:", np.sum(mask))
+left_half = img[:, 0:w//2]
 
+right_half = img[:, w//2:]
 
-print(arr[mask])
+cv2.imshow("Top Left 100x50", top_left)
+cv2.imshow("Center 100x100", center)
+cv2.imshow("Top Half", top_half)
+cv2.imshow("Bottom Half", bottom_half)
+cv2.imshow("Left Half", left_half)
+cv2.imshow("Right Half", right_half)
 
-arr1 = arr.copy()
-arr1[mask] += 10
+cv2.waitKey(0)
+cv2.destroyAllWindows()
 
-print(arr1)
+# Завдання 4
+img = cv2.imread("data/lesson1/Lenna.png")
 
-arr2 = arr.copy()
-arr2[~mask] *= -1
+# делаем черно-белое
+gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-print(arr2)
+h, w = gray.shape
 
-replace_arr = np.array([
-    [1, 0, 1, 0],
-    [0, 1, 0, 1],
-    [1, 0, 1, 0]
-])
-
-arr3 = arr.copy()
-arr3[mask] = replace_arr[mask]
-
-print(arr3)
-
-# Завдання 6
+img1 = gray.copy()
+img1 = cv2.copyMakeBorder(
+    img1,
+    top=50,
+    bottom=50,
+    left=0,
+    right=0,
+    borderType=cv2.BORDER_CONSTANT,
+    value=[0]
+)
 
 
+img1[-50:, :] = 255
 
-arr = np.array([10, 4, 25, 40, 200], dtype=np.uint8)
 
-print(arr)
-print(arr.dtype)
+img2 = gray.copy()
+img2 = cv2.copyMakeBorder(
+    img2,
+    top=0,
+    bottom=0,
+    left=50,
+    right=50,
+    borderType=cv2.BORDER_CONSTANT,
+    value=[0]
+)
 
-arr2 = np.clip(arr * 2, 0, 255).astype(np.uint8)
+img2[:, -50:] = 255
 
-print(arr2)
-print(arr2.dtype)
+img3 = gray.copy()
 
-arr3 = np.clip(arr * 1.5, 0, 255).astype(np.uint8)
 
-print(arr3)
-print(arr3.dtype)
+img3[:30, :] = 0
+img3[-30:, :] = 0
+
+img3[:, :30] = 0
+img3[:, -30:] = 0
+
+cv2.imshow("Gray", gray)
+cv2.imshow("Top-Bottom", img1)
+cv2.imshow("Left-Right", img2)
+cv2.imshow("Frame Overlay", img3)
+
+cv2.waitKey(0)
+cv2.destroyAllWindows()
