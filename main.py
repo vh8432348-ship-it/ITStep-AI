@@ -1,44 +1,94 @@
-import numpy as np
-# Завдання 1
-arr = np.array([
-    [1, 2, 3, 4],
-    [5, 6, 7, 8],
-    [9, 10, 11, 12],
-    [13, 14, 15, 16]
-])
-#
-# print(arr[3,1])
-#
-# print(arr[2,:])
-#
-# print(arr[:,0])
-#
-# print(arr[:2,:])
-#
-# arr[2:,:] = 100
-# print(arr)
-#
-# arr[2,:] = arr[3,:]
-# print(arr)
+import cv2
 
-# Завдання 2
-mask = arr % 2 == 0
-
-print(arr[mask])
-
-arr[mask] = 100
-
-print(arr)
+img = cv2.imread("data/lesson3/notes.png", cv2.IMREAD_GRAYSCALE)
 
 
-# Завдання 3
-arr1 = np.array([128, 200, 10], dtype=np.uint8)
-arr2 = np.array([250, 10, 34], dtype=np.uint8)
+_, binary = cv2.threshold(img, 127, 255, cv2.THRESH_BINARY)
+cv2.imshow("Binary", binary)
 
-result = 0.2 * arr1 + 0.8 * arr2
+adaptive = cv2.adaptiveThreshold(
+    img,
+    255,
+    cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+    cv2.THRESH_BINARY,
+    11,
+    2
+)
+cv2.imshow("Adaptive Binary", adaptive)
 
-result = np.round(result)
 
-result = result.astype(np.uint8)
+kernels = [3, 5, 11]
+sigmas = [0, 2, 10]
 
-print(result.dtype)
+for k in kernels:
+    for sigma in sigmas:
+
+        blur = cv2.GaussianBlur(img, (k, k), sigma)
+
+        cv2.imshow(f"Gaussian k={k} sigma={sigma}", blur)
+
+        _, binary_blur = cv2.threshold(
+            blur,
+            127,
+            255,
+            cv2.THRESH_BINARY
+        )
+
+        cv2.imshow(
+            f"Binary k={k} sigma={sigma}",
+            binary_blur
+        )
+
+        adaptive_blur = cv2.adaptiveThreshold(
+            blur,
+            255,
+            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+            cv2.THRESH_BINARY,
+            11,
+            2
+        )
+
+        cv2.imshow(
+            f"Adaptive k={k} sigma={sigma}",
+            adaptive_blur
+        )
+
+bilateral = cv2.bilateralFilter(
+    img,
+    9,
+    75,
+    75
+)
+
+cv2.imshow("Bilateral", bilateral)
+
+
+_, binary_bilateral = cv2.threshold(
+    bilateral,
+    127,
+    255,
+    cv2.THRESH_BINARY
+)
+
+cv2.imshow(
+    "Binary after Bilateral",
+    binary_bilateral
+)
+
+# Адаптивная бинаризация после Bilateral
+adaptive_bilateral = cv2.adaptiveThreshold(
+    bilateral,
+    255,
+    cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+    cv2.THRESH_BINARY,
+    11,
+    2
+)
+
+cv2.imshow(
+    "Adaptive after Bilateral",
+    adaptive_bilateral
+)
+
+cv2.waitKey(0)
+cv2.destroyAllWindows()
