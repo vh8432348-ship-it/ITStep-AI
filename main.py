@@ -1,94 +1,122 @@
 import cv2
 
-img = cv2.imread("data/lesson3/notes.png", cv2.IMREAD_GRAYSCALE)
+# Завдання 1
+video = cv2.VideoCapture("data/lesson7/text.mp4")
 
+width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
+height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
+fps = video.get(cv2.CAP_PROP_FPS)
 
-_, binary = cv2.threshold(img, 127, 255, cv2.THRESH_BINARY)
-cv2.imshow("Binary", binary)
+new_width = width // 2
+new_height = height // 4
 
-adaptive = cv2.adaptiveThreshold(
-    img,
-    255,
-    cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-    cv2.THRESH_BINARY,
-    11,
-    2
-)
-cv2.imshow("Adaptive Binary", adaptive)
-
-
-kernels = [3, 5, 11]
-sigmas = [0, 2, 10]
-
-for k in kernels:
-    for sigma in sigmas:
-
-        blur = cv2.GaussianBlur(img, (k, k), sigma)
-
-        cv2.imshow(f"Gaussian k={k} sigma={sigma}", blur)
-
-        _, binary_blur = cv2.threshold(
-            blur,
-            127,
-            255,
-            cv2.THRESH_BINARY
-        )
-
-        cv2.imshow(
-            f"Binary k={k} sigma={sigma}",
-            binary_blur
-        )
-
-        adaptive_blur = cv2.adaptiveThreshold(
-            blur,
-            255,
-            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-            cv2.THRESH_BINARY,
-            11,
-            2
-        )
-
-        cv2.imshow(
-            f"Adaptive k={k} sigma={sigma}",
-            adaptive_blur
-        )
-
-bilateral = cv2.bilateralFilter(
-    img,
-    9,
-    75,
-    75
+writer = cv2.VideoWriter(
+    "data/lesson7/new_video.mp4",
+    cv2.VideoWriter_fourcc(*"mp4v"),
+    fps,
+    (new_width, new_height)
 )
 
-cv2.imshow("Bilateral", bilateral)
+while True:
+    ret, frame = video.read()
+
+    if not ret:
+        break
+
+    resized_frame = cv2.resize(frame, (new_width, new_height))
+
+    cv2.imshow("Video", resized_frame)
+
+    writer.write(resized_frame)
+
+    if cv2.waitKey(25) & 0xFF == ord("q"):
+        break
 
 
-_, binary_bilateral = cv2.threshold(
-    bilateral,
-    127,
-    255,
-    cv2.THRESH_BINARY
+video.release()
+writer.release()
+cv2.destroyAllWindows()
+
+# Завдання 2
+
+video = cv2.VideoCapture("data/lesson7/text.mp4")
+
+width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
+height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
+fps = video.get(cv2.CAP_PROP_FPS)
+
+
+writer = cv2.VideoWriter(
+    "data/lesson7/binary_video.mp4",
+    cv2.VideoWriter_fourcc(*"mp4v"),
+    fps,
+    (width, height),
+    False
 )
 
-cv2.imshow(
-    "Binary after Bilateral",
-    binary_bilateral
+
+while True:
+    ret, frame = video.read()
+
+    if not ret:
+        break
+
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+    _, binary = cv2.threshold(
+        gray,
+        127,
+        255,
+        cv2.THRESH_BINARY
+    )
+
+    cv2.imshow("Binary video", binary)
+
+    writer.write(binary)
+
+    if cv2.waitKey(25) & 0xFF == ord("q"):
+        break
+
+
+video.release()
+writer.release()
+cv2.destroyAllWindows()
+# Завдання 3
+
+video = cv2.VideoCapture("data/lesson7/shapes.mp4")
+
+width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
+height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
+fps = video.get(cv2.CAP_PROP_FPS)
+
+
+writer = cv2.VideoWriter(
+    "data/lesson7/edges_video.mp4",
+    cv2.VideoWriter_fourcc(*"mp4v"),
+    fps,
+    (width, height),
+    False
 )
 
-# Адаптивная бинаризация после Bilateral
-adaptive_bilateral = cv2.adaptiveThreshold(
-    bilateral,
-    255,
-    cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-    cv2.THRESH_BINARY,
-    11,
-    2
-)
 
-cv2.imshow(
-    "Adaptive after Bilateral",
-    adaptive_bilateral
-)
+while True:
+    ret, frame = video.read()
 
-cv2.waitKey(0)
+    if not ret:
+        break
+
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+    edges = cv2.Canny(gray, 100, 200)
+
+    cv2.imshow("Edges", edges)
+
+    writer.write(edges)
+
+    if cv2.waitKey(25) & 0xFF == ord("q"):
+        break
+
+
+video.release()
+writer.release()
 cv2.destroyAllWindows()
