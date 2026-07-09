@@ -1,122 +1,137 @@
 import cv2
-
-# Завдання 1
-video = cv2.VideoCapture("data/lesson7/text.mp4")
-
-width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
-height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
-fps = video.get(cv2.CAP_PROP_FPS)
-
-new_width = width // 2
-new_height = height // 4
-
-writer = cv2.VideoWriter(
-    "data/lesson7/new_video.mp4",
-    cv2.VideoWriter_fourcc(*"mp4v"),
-    fps,
-    (new_width, new_height)
-)
-
-while True:
-    ret, frame = video.read()
-
-    if not ret:
-        break
-
-    resized_frame = cv2.resize(frame, (new_width, new_height))
-
-    cv2.imshow("Video", resized_frame)
-
-    writer.write(resized_frame)
-
-    if cv2.waitKey(25) & 0xFF == ord("q"):
-        break
+from ultralytics import YOLO
 
 
-video.release()
-writer.release()
-cv2.destroyAllWindows()
-
-# Завдання 2
-
-video = cv2.VideoCapture("data/lesson7/text.mp4")
-
-width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
-height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
-fps = video.get(cv2.CAP_PROP_FPS)
-
-
-writer = cv2.VideoWriter(
-    "data/lesson7/binary_video.mp4",
-    cv2.VideoWriter_fourcc(*"mp4v"),
-    fps,
-    (width, height),
-    False
+video = cv2.VideoCapture(
+    "data/lesson8/animals.mp4"
 )
 
 
-while True:
-    ret, frame = video.read()
+ret, frame = video.read()
 
-    if not ret:
-        break
 
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+if ret:
 
-    _, binary = cv2.threshold(
-        gray,
-        127,
-        255,
-        cv2.THRESH_BINARY
+    cv2.imshow(
+        "First frame",
+        frame
     )
 
-    cv2.imshow("Binary video", binary)
-
-    writer.write(binary)
-
-    if cv2.waitKey(25) & 0xFF == ord("q"):
-        break
+    cv2.waitKey(0)
 
 
-video.release()
-writer.release()
-cv2.destroyAllWindows()
-# Завдання 3
 
-video = cv2.VideoCapture("data/lesson7/shapes.mp4")
-
-width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
-height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
-fps = video.get(cv2.CAP_PROP_FPS)
+model = YOLO("yolo11n.pt")
 
 
-writer = cv2.VideoWriter(
-    "data/lesson7/edges_video.mp4",
-    cv2.VideoWriter_fourcc(*"mp4v"),
-    fps,
-    (width, height),
-    False
+results = model(
+    frame,
+    conf=0.5,
+    iou=0.4
 )
 
 
+image = results[0].plot()
+
+
+cv2.imshow(
+    "YOLO detection",
+    image
+)
+
+
+for box in results[0].boxes:
+
+    x1, y1, x2, y2 = box.xyxy[0]
+
+    x1 = int(x1)
+    y1 = int(y1)
+    x2 = int(x2)
+    y2 = int(y2)
+
+
+    crop = frame[y1:y2, x1:x2]
+
+
+    cv2.imshow(
+        "Detected object",
+        crop
+    )
+
+    cv2.waitKey(0)
+
+
+cv2.destroyAllWindows()
+
+video.release()
+
+# Завдання 2
+model = YOLO("yolo11n.pt")
+results = model.track(frame, persist=True)
+
+
+for result in results:
+    for box in result.boxes:
+        if box.id is not None:
+            print("Знайдений ID:", int(box.id[0]))
+
+
+target_id = int(input("Введіть ID об'єкта: "))
+
+
 while True:
+
     ret, frame = video.read()
 
     if not ret:
         break
 
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-    edges = cv2.Canny(gray, 100, 200)
+    results = model.track(frame, persist=True)
 
-    cv2.imshow("Edges", edges)
 
-    writer.write(edges)
+    for result in results:
 
-    if cv2.waitKey(25) & 0xFF == ord("q"):
+        for box in result.boxes:
+
+            if box.id is None:
+                continue
+
+
+            object_id = int(box.id[0])
+
+
+            if object_id == target_id:
+
+                x1, y1, x2, y2 = map(int, box.xyxy[0])
+
+
+                cv2.rectangle(
+                    frame,
+                    (x1,y1),
+                    (x2,y2),
+                    (0,255,0),
+                    3
+                )
+
+
+                cv2.putText(
+                    frame,
+                    f"ID {object_id}",
+                    (x1,y1-10),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    1,
+                    (0,255,0),
+                    2
+                )
+
+
+    cv2.imshow("YOLO Tracking", frame)
+
+
+    if cv2.waitKey(1) == 27:
         break
 
 
 video.release()
-writer.release()
 cv2.destroyAllWindows()
