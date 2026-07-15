@@ -1,137 +1,49 @@
 import cv2
-from ultralytics import YOLO
+import numpy as np
+import matplotlib.pyplot as plt
+
+image = cv2.imread("data/lesson1/Lenna.png")
+image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+mask1 = cv2.imread("data/lesson1/mask1.png", cv2.IMREAD_GRAYSCALE)
+mask2 = cv2.imread("data/lesson1/mask2.png", cv2.IMREAD_GRAYSCALE)
 
 
-video = cv2.VideoCapture(
-    "data/lesson8/animals.mp4"
-)
+mask_or = cv2.bitwise_or(mask1, mask2)
 
+plt.figure(figsize=(5,5))
+plt.imshow(mask_or, cmap="gray")
+plt.title("Об'єднана маска")
+plt.axis("off")
+plt.show()
 
-ret, frame = video.read()
+mask1_bool = mask1.astype(bool)
+mask2_bool = mask2.astype(bool)
+mask_or_bool = mask_or.astype(bool)
 
+img_mask1 = np.zeros_like(image)
+img_mask2 = np.zeros_like(image)
+img_mask_or = np.zeros_like(image)
 
-if ret:
+img_mask1[mask1_bool] = image[mask1_bool]
+img_mask2[mask2_bool] = image[mask2_bool]
+img_mask_or[mask_or_bool] = image[mask_or_bool]
 
-    cv2.imshow(
-        "First frame",
-        frame
-    )
+plt.figure(figsize=(15,5))
 
-    cv2.waitKey(0)
+plt.subplot(1,3,1)
+plt.imshow(img_mask1)
+plt.title("Mask1")
+plt.axis("off")
 
+plt.subplot(1,3,2)
+plt.imshow(img_mask2)
+plt.title("Mask2")
+plt.axis("off")
 
+plt.subplot(1,3,3)
+plt.imshow(img_mask_or)
+plt.title("Mask1 OR Mask2")
+plt.axis("off")
 
-model = YOLO("yolo11n.pt")
-
-
-results = model(
-    frame,
-    conf=0.5,
-    iou=0.4
-)
-
-
-image = results[0].plot()
-
-
-cv2.imshow(
-    "YOLO detection",
-    image
-)
-
-
-for box in results[0].boxes:
-
-    x1, y1, x2, y2 = box.xyxy[0]
-
-    x1 = int(x1)
-    y1 = int(y1)
-    x2 = int(x2)
-    y2 = int(y2)
-
-
-    crop = frame[y1:y2, x1:x2]
-
-
-    cv2.imshow(
-        "Detected object",
-        crop
-    )
-
-    cv2.waitKey(0)
-
-
-cv2.destroyAllWindows()
-
-video.release()
-
-# Завдання 2
-model = YOLO("yolo11n.pt")
-results = model.track(frame, persist=True)
-
-
-for result in results:
-    for box in result.boxes:
-        if box.id is not None:
-            print("Знайдений ID:", int(box.id[0]))
-
-
-target_id = int(input("Введіть ID об'єкта: "))
-
-
-while True:
-
-    ret, frame = video.read()
-
-    if not ret:
-        break
-
-
-    results = model.track(frame, persist=True)
-
-
-    for result in results:
-
-        for box in result.boxes:
-
-            if box.id is None:
-                continue
-
-
-            object_id = int(box.id[0])
-
-
-            if object_id == target_id:
-
-                x1, y1, x2, y2 = map(int, box.xyxy[0])
-
-
-                cv2.rectangle(
-                    frame,
-                    (x1,y1),
-                    (x2,y2),
-                    (0,255,0),
-                    3
-                )
-
-
-                cv2.putText(
-                    frame,
-                    f"ID {object_id}",
-                    (x1,y1-10),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    1,
-                    (0,255,0),
-                    2
-                )
-
-
-    cv2.imshow("YOLO Tracking", frame)
-
-
-    if cv2.waitKey(1) == 27:
-        break
-
-
-video.release()
-cv2.destroyAllWindows()
+plt.show()
