@@ -1,36 +1,45 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-from ultralytics import YOLO
 
-model = YOLO("data/lesson_seg/crop-seg.pt")
+img = cv2.imread("data/lesson2/darken.png")
 
-image = cv2.imread("data/lesson_seg/crop3.jpg")
-image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
-results = model(image)
+hsv_equalized = hsv.copy()
+hsv_equalized[:, :, 2] = cv2.equalizeHist(hsv_equalized[:, :, 2])
 
-result = results[0]
+result_equalized = cv2.cvtColor(hsv_equalized, cv2.COLOR_HSV2RGB)
 
-for i in range(len(result.boxes)):
-    class_id = int(result.boxes.cls[i])
-    name = result.names[class_id]
+hsv_bright = hsv.copy()
 
-    mask = result.masks.data[i].cpu().numpy()
+value = hsv_bright[:, :, 2].astype(np.float32)
+value = value * 1.3
+value = np.clip(value, 0, 255)
+value = value.astype(np.uint8)
 
-    mask = cv2.resize(
-        mask,
-        (image.shape[1], image.shape[0]),
-        interpolation=cv2.INTER_NEAREST
-    )
+hsv_bright[:, :, 2] = value
 
-    mask = mask > 0.5
+result_bright = cv2.cvtColor(hsv_bright, cv2.COLOR_HSV2RGB)
 
-    plant = np.full_like(image, 255)
-    plant[mask] = image[mask]
+original = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-    plt.figure(figsize=(5, 5))
-    plt.imshow(plant)
-    plt.title(name)
-    plt.axis("off")
-    plt.show()
+plt.figure(figsize=(15,5))
+
+plt.subplot(1,3,1)
+plt.imshow(original)
+plt.title("Оригінал")
+plt.axis("off")
+
+plt.subplot(1,3,2)
+plt.imshow(result_equalized)
+plt.title("Вирівнювання гістограми")
+plt.axis("off")
+
+plt.subplot(1,3,3)
+plt.imshow(result_bright)
+plt.title("Value +30%")
+plt.axis("off")
+
+plt.tight_layout()
+plt.show()
