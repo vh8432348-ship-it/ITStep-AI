@@ -1,100 +1,124 @@
 import cv2
-import numpy as np
-import matplotlib.pyplot as plt
+# Завдання 1
+# video_path = r"data\lesson8\meetings.mp4"
+#
+# cap = cv2.VideoCapture(video_path)
+#
+# hog = cv2.HOGDescriptor()
+# hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
+#
+#
+# while True:
+#     ret, frame = cap.read()
+#
+#     if not ret:
+#         break
+#
+#     frame = cv2.resize(frame, (800, 450))
+#
+#     boxes, weights = hog.detectMultiScale(
+#         frame,
+#         winStride=(8, 8),
+#         padding=(8, 8),
+#         scale=1.05
+#     )
+#
+#     for (x, y, w, h) in boxes:
+#         cv2.rectangle(
+#             frame,
+#             (x, y),
+#             (x+w, y+h),
+#             (0, 255, 0),
+#             2
+#         )
+#
+#     cv2.putText(
+#         frame,
+#         f"People: {len(boxes)}",
+#         (20, 40),
+#         cv2.FONT_HERSHEY_SIMPLEX,
+#         1,
+#         (0, 0, 255),
+#         2
+#     )
+#
+#     cv2.imshow("People detection", frame)
+#
+#     if cv2.waitKey(20) & 0xFF == 27:
+#         break
+#
+#
+# cap.release()
+# cv2.destroyAllWindows()
+
+# Завдання 2
+
+video_path = r"data\lesson8\meetings.mp4"
+
+cap = cv2.VideoCapture(video_path)
+
+hog = cv2.HOGDescriptor()
+hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
+
+start_show = False
 
 
-#Завдання 1
+while True:
 
-img = cv2.imread("data/lesson3/sonet.png")
+    ret, frame = cap.read()
 
-gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-blur = cv2.GaussianBlur(gray, (5, 5), 0)
-
-binary = cv2.adaptiveThreshold(
-    blur,
-    255,
-    cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-    cv2.THRESH_BINARY,
-    11,
-    2
-)
-
-kernel = np.ones((3, 3), np.uint8)
-
-clean = cv2.morphologyEx(
-    binary,
-    cv2.MORPH_OPEN,
-    kernel,
-    iterations=1
-)
+    if not ret:
+        break
 
 
-plt.figure(figsize=(12, 4))
-
-plt.subplot(1, 4, 1)
-plt.imshow(gray, cmap="gray")
-plt.title("Gray")
-
-plt.subplot(1, 4, 2)
-plt.imshow(blur, cmap="gray")
-plt.title("Blur")
-
-plt.subplot(1, 4, 3)
-plt.imshow(binary, cmap="gray")
-plt.title("Adaptive")
-
-plt.subplot(1, 4, 4)
-plt.imshow(clean, cmap="gray")
-plt.title("Clean")
-
-plt.show()
+    frame = cv2.resize(frame, (800, 450))
 
 
-
-#Завдання 2
-
-img = cv2.imread("data\lesson3\sonet_noised.png")
-
-gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-blur = cv2.medianBlur(gray, 5)
-
-binary = cv2.adaptiveThreshold(
-    blur,
-    255,
-    cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-    cv2.THRESH_BINARY,
-    11,
-    2
-)
-
-kernel = np.ones((3, 3), np.uint8)
-
-clean = cv2.morphologyEx(
-    binary,
-    cv2.MORPH_OPEN,
-    kernel,
-    iterations=2
-)
+    boxes, weights = hog.detectMultiScale(
+        frame,
+        winStride=(8,8),
+        padding=(8,8),
+        scale=1.05
+    )
 
 
-plt.figure(figsize=(12, 4))
+    people = len(boxes)
 
-plt.subplot(1, 4, 1)
-plt.imshow(gray, cmap="gray")
-plt.title("Gray noised")
 
-plt.subplot(1, 4, 2)
-plt.imshow(blur, cmap="gray")
-plt.title("Median blur")
+    if people >= 5:
+        start_show = True
 
-plt.subplot(1, 4, 3)
-plt.imshow(binary, cmap="gray")
-plt.title("Adaptive")
 
-plt.subplot(1, 4, 4)
-plt.imshow(clean, cmap="gray")
-plt.title("Clean result")
+    if start_show:
 
-plt.show()
+        for (x,y,w,h) in boxes:
+            cv2.rectangle(
+                frame,
+                (x,y),
+                (x+w,y+h),
+                (0,255,0),
+                2
+            )
+
+        cv2.putText(
+            frame,
+            f"People: {people}",
+            (20,40),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1,
+            (0,0,255),
+            2
+        )
+
+        cv2.imshow(
+            "Video from 5 people",
+            frame
+        )
+
+
+    if cv2.waitKey(20) & 0xFF == 27:
+        break
+
+
+cap.release()
+cv2.destroyAllWindows()
