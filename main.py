@@ -25,9 +25,8 @@ llm = GoogleGenerativeAI(
 # print(result)
 
 
-with open("data/lesson9/rules.txt", "r", encoding="utf-8") as file:
-    rules = file.read()
-histori = ''
+
+history = ''
 count1 = 0
 count = 0
 while True:
@@ -43,11 +42,11 @@ while True:
     Питання користувача:
     {question}
     Історія вашого спілкування:
-    {histori}
+    {history}
     Відповідай коротко та зрозуміло.
     """
     result = llm.invoke(prompt)
     count += 1
     count1 += 1
-    histori += f"Користувач питання {count}:{question}. Бот відповідь: {count1} {result}."
+    history += f"Користувач питання {count}:{question}. Бот відповідь: {count1} {result}."
     print(result)
