@@ -1,16 +1,14 @@
-from pydantic import BaseModel, Field
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.output_parsers import PydanticOutputParser
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_community.tools import DuckDuckGoSearchRun
 import dotenv
-from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 import os
-from langchain_core.messages import trim_messages
-
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain.agents import create_agent
+import re
+from langchain_core.tools import tool
 dotenv.load_dotenv()
 
 api_key = os.getenv("GEMINI_API_KEY")
-
+serper_api_key = os.getenv("SERPER_API_KEY")
 
 
 llm = ChatGoogleGenerativeAI(
@@ -20,39 +18,63 @@ llm = ChatGoogleGenerativeAI(
     max_output_tokens=1000
 )
 
-
-with open("data/lesson9/return_policy.txt", "r", encoding="utf-8") as file:
-    rules = file.read()
-
-
-# Інструкція для моделі
-messages = [
-    SystemMessage(content=f"""
-Ти чат-бот, який відповідає тільки на питання
-стосовно умов повернення товару.
-
-Використовуй інформацію тільки з наведених правил:
-
-{rules}
-
-Якщо користувач запитує щось, що не стосується
-умов повернення товару або на це немає інформації
-у правилах, відповідай:
-
-"Немає інформації з цього питання."
-""")
-]
-
-
-trimmer = trim_messages(
-    max_tokens=5,
-    strategy="last",
-    token_counter=len,
-    start_on="human",
-    end_on="human",
-    include_system=True
-)
-
+# @tool
+# def check_password(password: str) -> str:
+#     """
+#     Перевіряє складність паролю.
+#     Перевіряє довжину, наявність літери, цифри,
+#     спеціального символу та різні регістри.
+#     """
+#
+#     result = []
+#
+#     if len(password) > 8:
+#         result.append("Добре: пароль має більше 8 символів.")
+#     else:
+#         result.append("Погано: пароль повинен мати більше 8 символів.")
+#
+#     if re.search(r"[A-Za-z]", password):
+#         result.append("Добре: пароль містить літери.")
+#     else:
+#         result.append("Погано: пароль не містить літер.")
+#
+#     if re.search(r"\d", password):
+#         result.append("Добре: пароль містить цифру.")
+#     else:
+#         result.append("Погано: пароль не містить цифр.")
+#
+#     if re.search(r"[^A-Za-z0-9]", password):
+#         result.append("Добре: пароль містить спеціальний символ.")
+#     else:
+#         result.append("Погано: пароль не містить спеціального символу.")
+#
+#     if re.search(r"[a-z]", password) and re.search(r"[A-Z]", password):
+#         result.append("Добре: пароль містить літери в різних регістрах.")
+#     else:
+#         result.append(
+#             "Погано: пароль повинен містити великі та маленькі літери."
+#         )
+#
+#     return "\n".join(result)
+#
+#
+# tools = [check_password]
+#
+#
+# agent = create_agent(
+#     model=llm,
+#     tools=tools,
+#     system_prompt="""
+# Ти агент для перевірки складності паролів.
+#
+# Якщо користувач надає пароль або просить перевірити пароль,
+# використовуй інструмент check_password.
+#
+# Після отримання результату інструменту поясни користувачу,
+# що в його паролі добре, а що потрібно покращити.
+# """
+# )
+#
 #
 # while True:
 #
@@ -61,73 +83,43 @@ trimmer = trim_messages(
 #     if user_input.lower() == "exit":
 #         break
 #
-#     messages.append(
-#         HumanMessage(content=user_input)
-#     )
+#     result = agent.invoke({
+#         "messages": [
+#             {
+#                 "role": "user",
+#                 "content": user_input
+#             }
+#         ]
+#     })
 #
-#     trimmed_messages = trimmer.invoke(messages)
-#
-#     response = llm.invoke(trimmed_messages)
-#
-#     print("Бот:", response.content[0]["text"])
-#
-#     messages.append(
-#         AIMessage(content=response.content)
-#     )
-#
+#     print("Бот:", result["messages"][-1].content)
 
-messages = [
-    SystemMessage(content="""
-Ти допомагаєш користувачу вивчати англійську мову.
 
-Твої правила:
+search = DuckDuckGoSearchRun()
 
-1. Якщо користувач просить перекласти англійське слово
-або коротку фразу:
-- дай переклад;
-- наведи приклад використання цього слова або фрази
-  в англійському реченні;
-- переклади приклад українською.
 
-2. Якщо користувач просить перекласти ціле речення:
-- спочатку дай переклад речення;
-- потім поясни граматику речення;
-- зверни увагу на граматичні конструкції,
-  час, порядок слів, утворення питання тощо.
+agent = create_agent(
+    model=llm,
+    tools=[search],
+    system_prompt="""
+Ти агент, який показує останні новини про певну людину.
 
-Відповідай українською мовою.
-"""),
+Користувач повинен вказати ім'я людини.
 
-    HumanMessage(content="Переклади слово beautiful"),
+Якщо користувач вводить ім'я людини:
+1. Використай DuckDuckGo для пошуку останніх новин про цю людину.
+2. Покажи знайдену інформацію коротко та зрозуміло.
+3. Вкажи заголовок або короткий опис новини.
+4. Якщо можливо, вкажи дату новини.
 
-    AIMessage(content="""
-Переклад: beautiful — красивий, прекрасний.
+Якщо користувач не вводить ім'я людини,
+відповідай:
 
-Приклад:
-She has a beautiful smile.
-— У неї прекрасна посмішка.
-"""),
+"Немає відповідної інформації."
 
-    # Приклад 2
-    HumanMessage(content="Переклади речення There is a book on the table."),
-
-    AIMessage(content="""
-Переклад: На столі є книга.
-
-Граматика:
-There is використовується, коли ми говоримо про
-наявність одного предмета або особи.
-
-There is + однина:
-There is a book on the table.
-
-Для множини використовується There are:
-There are two books on the table.
-
-Структура:
-There is/are + предмет + місце.
-""")
-]
+Не шукай новини, якщо ім'я людини не вказане.
+"""
+)
 
 
 while True:
@@ -137,19 +129,18 @@ while True:
     if user_input.lower() == "exit":
         break
 
-    messages.append(
-        HumanMessage(content=user_input)
-    )
+    result = agent.invoke({
+        "messages": [
+            {
+                "role": "user",
+                "content": user_input
+            }
+        ]
+    })
 
-    response = llm.invoke(messages)
+    answer = result["messages"][-1].content
 
-    if isinstance(response.content, list):
-        answer = response.content[0]["text"]
-    else:
-        answer = response.content
+    if isinstance(answer, list):
+        answer = answer[0]["text"]
 
     print("Бот:", answer)
-
-    messages.append(
-        AIMessage(content=answer)
-    )
