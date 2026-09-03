@@ -1,146 +1,130 @@
-from langchain_community.tools import DuckDuckGoSearchRun
-import dotenv
 import os
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.agents import create_agent
-import re
-from langchain_core.tools import tool
-dotenv.load_dotenv()
+import json
+import uuid
 
-api_key = os.getenv("GEMINI_API_KEY")
-serper_api_key = os.getenv("SERPER_API_KEY")
+from dotenv import load_dotenv
+from pinecone import Pinecone, ServerlessSpec
 
-
-llm = ChatGoogleGenerativeAI(
-    model="gemini-3.5-flash-lite",
-    google_api_key=api_key,
-    temperature=0.1,
-    max_output_tokens=1000
-)
-
-# @tool
-# def check_password(password: str) -> str:
-#     """
-#     Перевіряє складність паролю.
-#     Перевіряє довжину, наявність літери, цифри,
-#     спеціального символу та різні регістри.
-#     """
-#
-#     result = []
-#
-#     if len(password) > 8:
-#         result.append("Добре: пароль має більше 8 символів.")
-#     else:
-#         result.append("Погано: пароль повинен мати більше 8 символів.")
-#
-#     if re.search(r"[A-Za-z]", password):
-#         result.append("Добре: пароль містить літери.")
-#     else:
-#         result.append("Погано: пароль не містить літер.")
-#
-#     if re.search(r"\d", password):
-#         result.append("Добре: пароль містить цифру.")
-#     else:
-#         result.append("Погано: пароль не містить цифр.")
-#
-#     if re.search(r"[^A-Za-z0-9]", password):
-#         result.append("Добре: пароль містить спеціальний символ.")
-#     else:
-#         result.append("Погано: пароль не містить спеціального символу.")
-#
-#     if re.search(r"[a-z]", password) and re.search(r"[A-Z]", password):
-#         result.append("Добре: пароль містить літери в різних регістрах.")
-#     else:
-#         result.append(
-#             "Погано: пароль повинен містити великі та маленькі літери."
-#         )
-#
-#     return "\n".join(result)
-#
-#
-# tools = [check_password]
-#
-#
-# agent = create_agent(
-#     model=llm,
-#     tools=tools,
-#     system_prompt="""
-# Ти агент для перевірки складності паролів.
-#
-# Якщо користувач надає пароль або просить перевірити пароль,
-# використовуй інструмент check_password.
-#
-# Після отримання результату інструменту поясни користувачу,
-# що в його паролі добре, а що потрібно покращити.
-# """
-# )
-#
-#
-# while True:
-#
-#     user_input = input("Ви: ")
-#
-#     if user_input.lower() == "exit":
-#         break
-#
-#     result = agent.invoke({
-#         "messages": [
-#             {
-#                 "role": "user",
-#                 "content": user_input
-#             }
-#         ]
-#     })
-#
-#     print("Бот:", result["messages"][-1].content)
+from langchain_core.documents import Document
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_pinecone import PineconeVectorStore
 
 
-search = DuckDuckGoSearchRun()
+load_dotenv()
 
 
-agent = create_agent(
-    model=llm,
-    tools=[search],
-    system_prompt="""
-Ти агент, який показує останні новини про певну людину.
+google_api_key = os.getenv("GOOGLE_API_KEY")
+pinecone_api_key = os.getenv("PINECONE_API_KEY")
 
-Користувач повинен вказати ім'я людини.
 
-Якщо користувач вводить ім'я людини:
-1. Використай DuckDuckGo для пошуку останніх новин про цю людину.
-2. Покажи знайдену інформацію коротко та зрозуміло.
-3. Вкажи заголовок або короткий опис новини.
-4. Якщо можливо, вкажи дату новини.
 
-Якщо користувач не вводить ім'я людини,
-відповідай:
+pc = Pinecone(api_key=pinecone_api_key)
 
-"Немає відповідної інформації."
+index_name = "lesson-rag"
 
-Не шукай новини, якщо ім'я людини не вказане.
-"""
+
+
+if not pc.has_index(index_name):
+    pc.create_index(
+        name=index_name,
+        dimension=3072,
+        metric="cosine",
+        spec=ServerlessSpec(
+            cloud="aws",
+            region="us-east-1"
+        )
+    )
+
+
+
+embeddings = GoogleGenerativeAIEmbeddings(
+    model="models/gemini-embedding-001",
+    google_api_key=google_api_key
 )
 
 
-while True:
 
-    user_input = input("Ви: ")
+folder_path = "data/lesson_rag/files"
 
-    if user_input.lower() == "exit":
-        break
+documents = []
+ids = []
+file_ids = {}
 
-    result = agent.invoke({
-        "messages": [
-            {
-                "role": "user",
-                "content": user_input
-            }
-        ]
-    })
 
-    answer = result["messages"][-1].content
 
-    if isinstance(answer, list):
-        answer = answer[0]["text"]
+for filename in os.listdir(folder_path):
 
-    print("Бот:", answer)
+    file_path = os.path.join(folder_path, filename)
+
+    if not os.path.isfile(file_path):
+        continue
+
+    with open(file_path, "r", encoding="utf-8") as file:
+        content = file.read()
+
+    document_id = str(uuid.uuid4())
+
+    document = Document(
+        page_content=content,
+        metadata={
+            "path": file_path
+        }
+    )
+
+    documents.append(document)
+    ids.append(document_id)
+
+    file_ids[document_id] = filename
+
+
+
+with open(
+    "data/lesson_rag/file_ids.json",
+    "w",
+    encoding="utf-8"
+) as file:
+
+    json.dump(
+        file_ids,
+        file,
+        ensure_ascii=False,
+        indent=4
+    )
+
+
+
+
+vectorstore = PineconeVectorStore(
+    index_name=index_name,
+    embedding=embeddings,
+    pinecone_api_key=pinecone_api_key
+)
+
+
+
+vectorstore.add_documents(
+    documents=documents,
+    ids=ids
+)
+
+
+print("Векторна база даних створена.")
+print(f"Додано документів: {len(documents)}")
+print("ID збережені у file_ids.json")
+
+
+query = input("\nВведіть запит для пошуку: ")
+
+results = vectorstore.similarity_search(
+    query,
+    k=3
+)
+
+
+print("Результати пошуку:")
+
+for result in results:
+
+    print("Файл:", result.metadata["path"])
+    print("Вміст:")
+    print(result.page_content[:500])
