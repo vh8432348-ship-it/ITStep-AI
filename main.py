@@ -1,130 +1,120 @@
 import os
-import json
-import uuid
-
-from dotenv import load_dotenv
-from pinecone import Pinecone, ServerlessSpec
-
-from langchain_core.documents import Document
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from langchain_pinecone import PineconeVectorStore
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 
-load_dotenv()
+os.environ["GOOGLE_API_KEY"] = os.getenv("GEMINI_API_KEY")
 
 
-google_api_key = os.getenv("GOOGLE_API_KEY")
-pinecone_api_key = os.getenv("PINECONE_API_KEY")
-
-
-
-pc = Pinecone(api_key=pinecone_api_key)
-
-index_name = "lesson-rag"
-
-
-
-if not pc.has_index(index_name):
-    pc.create_index(
-        name=index_name,
-        dimension=3072,
-        metric="cosine",
-        spec=ServerlessSpec(
-            cloud="aws",
-            region="us-east-1"
-        )
-    )
-
-
-
-embeddings = GoogleGenerativeAIEmbeddings(
-    model="models/gemini-embedding-001",
-    google_api_key=google_api_key
+llm = ChatGoogleGenerativeAI(
+    model="gemini-2.5-flash-lite",
+    temperature=0.7,
 )
 
 
+def zero_shot(topic, audience):
+    prompt = f"""
+Ти — експерт із розробки навчальних програм.
 
-folder_path = "data/lesson_rag/files"
+Створи план навчального курсу.
 
-documents = []
-ids = []
-file_ids = {}
+Тема: {topic}
+Цільова аудиторія: {audience}
+
+План повинен містити:
+1. Назву курсу.
+2. Мету курсу.
+3. Очікувані результати навчання.
+4. Модулі та теми кожного модуля.
+5. Короткий опис тем.
+6. Практичні завдання.
+7. Фінальний проєкт.
+8. Рекомендовану тривалість.
+
+Побудуй курс від простого до складного.
+Адаптуй складність матеріалу до цільової аудиторії.
+"""
+
+    response = llm.invoke(prompt)
+    return response.content
 
 
+def few_shot(topic, audience):
+    prompt = f"""
+Ти — експерт із розробки навчальних програм.
 
-for filename in os.listdir(folder_path):
+Ось приклад:
 
-    file_path = os.path.join(folder_path, filename)
+Тема: Python для початківців
+Цільова аудиторія: люди без досвіду програмування.
 
-    if not os.path.isfile(file_path):
+Назва курсу: Python з нуля
+
+Мета:
+Навчити студентів основ програмування мовою Python.
+
+Модуль 1. Основи Python
+- Змінні та типи даних
+- Введення та виведення
+- Арифметичні операції
+
+Модуль 2. Умови та цикли
+- if / elif / else
+- for
+- while
+
+Модуль 3. Колекції
+- Списки
+- Кортежі
+- Множини
+- Словники
+
+Фінальний проєкт:
+Створення невеликого застосунку.
+
+Очікуваний результат:
+Студент може створювати прості програми на Python.
+
+---
+
+Тепер створи новий курс, використовуючи
+структуру та підхід із прикладу.
+
+Тема: {topic}
+Цільова аудиторія: {audience}
+
+Адаптуй зміст до теми та рівня аудиторії.
+Не копіюй зміст прикладу.
+"""
+
+    response = llm.invoke(prompt)
+    return response.content
+
+
+while True:
+
+    print("Генератор навчального курсу:")
+    print("1 - Zero-shot")
+    print("2 - Few-shot")
+    print("0 - Вихід")
+
+    choice = input("\nОберіть режим: ")
+
+    if choice == "0":
+        print("Програму завершено.")
+        break
+
+    if choice not in ["1", "2"]:
+        print("Невірний вибір.")
         continue
 
-    with open(file_path, "r", encoding="utf-8") as file:
-        content = file.read()
+    topic = input("Введіть тему курсу: ")
+    audience = input("Опишіть цільову аудиторію: ")
 
-    document_id = str(uuid.uuid4())
+    print("Генерація курсу..")
 
-    document = Document(
-        page_content=content,
-        metadata={
-            "path": file_path
-        }
-    )
+    if choice == "1":
+        result = zero_shot(topic, audience)
+    else:
+        result = few_shot(topic, audience)
 
-    documents.append(document)
-    ids.append(document_id)
-
-    file_ids[document_id] = filename
-
-
-
-with open(
-    "data/lesson_rag/file_ids.json",
-    "w",
-    encoding="utf-8"
-) as file:
-
-    json.dump(
-        file_ids,
-        file,
-        ensure_ascii=False,
-        indent=4
-    )
-
-
-
-
-vectorstore = PineconeVectorStore(
-    index_name=index_name,
-    embedding=embeddings,
-    pinecone_api_key=pinecone_api_key
-)
-
-
-
-vectorstore.add_documents(
-    documents=documents,
-    ids=ids
-)
-
-
-print("Векторна база даних створена.")
-print(f"Додано документів: {len(documents)}")
-print("ID збережені у file_ids.json")
-
-
-query = input("\nВведіть запит для пошуку: ")
-
-results = vectorstore.similarity_search(
-    query,
-    k=3
-)
-
-
-print("Результати пошуку:")
-
-for result in results:
-
-    print("Файл:", result.metadata["path"])
-    print("Вміст:")
-    print(result.page_content[:500])
+    print(result)
