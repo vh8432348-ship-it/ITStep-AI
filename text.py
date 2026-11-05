@@ -40,9 +40,9 @@ output = cv2.bitwise_and(img, img, mask=mask)
 
 cv2.imwrite(f"{tumor_type}.jpg", output)
 
-print("Площадь в пикселях:", pixel_area)
+print("Площадь в пікселях:", pixel_area)
 print("Площадь в см^2:", cm_area)
-print("Тип опухоли:", tumor_type)
+print("Тип пухлини:", tumor_type)
 
 cv2.imshow("Segmentation", result.plot())
 cv2.imshow("Tumor mask", mask)
