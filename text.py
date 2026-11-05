@@ -6,15 +6,13 @@ model = YOLO("data/lesson_seg/brain-tumor-seg.pt")
 
 img = cv2.imread("data/lesson_seg/tumor1.jpg")
 
-if img is None:
-    raise FileNotFoundError("Не удалось открыть tumor1.jpg")
 
 results = model.predict(img, conf=0.25)
 
 result = results[0]
 
 if result.masks is None:
-    print("Опухоль не обнаружена")
+    print("Пухлина не виявлена")
     exit()
 
 masks = result.masks.data.cpu().numpy()
@@ -43,7 +41,7 @@ output = cv2.bitwise_and(img, img, mask=mask)
 cv2.imwrite(f"{tumor_type}.jpg", output)
 
 print("Площадь в пикселях:", pixel_area)
-print("Площадь в см²:", cm_area)
+print("Площадь в см^2:", cm_area)
 print("Тип опухоли:", tumor_type)
 
 cv2.imshow("Segmentation", result.plot())
