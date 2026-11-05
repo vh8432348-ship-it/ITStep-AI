@@ -1,43 +1,54 @@
 import cv2
+import numpy as np
+from ultralytics import YOLO
 
-cap = cv2.VideoCapture("data/lesson7/meter.mp4")
+model = YOLO("data/lesson_seg/brain-tumor-seg.pt")
 
-fps = cap.get(cv2.CAP_PROP_FPS)
-width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+img = cv2.imread("data/lesson_seg/tumor1.jpg")
 
-fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+if img is None:
+    raise FileNotFoundError("Не удалось открыть tumor1.jpg")
 
-out = cv2.VideoWriter(
-    "data/lesson7/meter_binary.mp4",
-    fourcc,
-    fps,
-    (width, height),
-    isColor=False
+results = model.predict(img, conf=0.25)
+
+result = results[0]
+
+if result.masks is None:
+    print("Опухоль не обнаружена")
+    exit()
+
+masks = result.masks.data.cpu().numpy()
+
+mask = np.any(masks > 0.5, axis=0).astype(np.uint8) * 255
+
+mask = cv2.resize(
+    mask,
+    (img.shape[1], img.shape[0]),
+    interpolation=cv2.INTER_NEAREST
 )
 
-while True:
-    ret, frame = cap.read()
+pixel_area = cv2.countNonZero(mask)
 
-    if not ret:
-        break
+cm_area = pixel_area * 0.0025
 
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+if cm_area < 10:
+    tumor_type = "small"
+elif cm_area <= 25:
+    tumor_type = "middle"
+else:
+    tumor_type = "large"
 
-    filtered = cv2.bilateralFilter(gray, 9, 75, 75)
+output = cv2.bitwise_and(img, img, mask=mask)
 
-    _, binary = cv2.threshold(
-        filtered,
-        127,
-        255,
-        cv2.THRESH_BINARY
-    )
+cv2.imwrite(f"{tumor_type}.jpg", output)
 
-    out.write(binary)
+print("Площадь в пикселях:", pixel_area)
+print("Площадь в см²:", cm_area)
+print("Тип опухоли:", tumor_type)
 
-cap.release()
-out.release()
+cv2.imshow("Segmentation", result.plot())
+cv2.imshow("Tumor mask", mask)
+cv2.imshow("Tumor only", output)
 
+cv2.waitKey(0)
 cv2.destroyAllWindows()
-
-

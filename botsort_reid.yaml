@@ -1,0 +1,9 @@
+tracker_type: botsort
+
+with_reid: True
+model: auto
+
+track_buffer: 90
+
+proximity_thresh: 0.5
+appearance_thresh: 0.8
