@@ -1,52 +1,98 @@
-import cv2
-import numpy as np
-from ultralytics import YOLO
+import os
+from dotenv import load_dotenv
 
-model = YOLO("data/lesson_seg/brain-tumor-seg.pt")
-
-img = cv2.imread("data/lesson_seg/tumor1.jpg")
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.prompts import ChatPromptTemplate
 
 
-results = model.predict(img, conf=0.25)
+load_dotenv()
 
-result = results[0]
+api_key = os.getenv("GEMINI_API_KEY")
 
-if result.masks is None:
-    print("Пухлина не виявлена")
-    exit()
+if not api_key:
+    raise ValueError("GEMINI_API_KEY не знайдено у файлі .env")
 
-masks = result.masks.data.cpu().numpy()
 
-mask = np.any(masks > 0.5, axis=0).astype(np.uint8) * 255
-
-mask = cv2.resize(
-    mask,
-    (img.shape[1], img.shape[0]),
-    interpolation=cv2.INTER_NEAREST
+model = ChatGoogleGenerativeAI(
+    model="gemini-2.5-flash",
+    temperature=0.3,
+    google_api_key=api_key
 )
 
-pixel_area = cv2.countNonZero(mask)
 
-cm_area = pixel_area * 0.0025
+prompt = ChatPromptTemplate.from_messages([
+    (
+        "system",
+        """
+        Ти — помічник із вивчення англійської мови.
 
-if cm_area < 10:
-    tumor_type = "small"
-elif cm_area <= 25:
-    tumor_type = "middle"
-else:
-    tumor_type = "large"
+        Твоє завдання — допомагати користувачеві вивчати
+        англійську мову.
 
-output = cv2.bitwise_and(img, img, mask=mask)
+        Визнач тип запиту та використовуй відповідний формат відповіді.
 
-cv2.imwrite(f"{tumor_type}.jpg", output)
+        Якщо користувач вводить окреме слово
+        або коротку фразу:
 
-print("Площадь в пікселях:", pixel_area)
-print("Площадь в см^2:", cm_area)
-print("Тип пухлини:", tumor_type)
+        1. Напиши переклад українською мовою.
+        2. Наведи приклад використання англійською мовою.
+        3. Переклади приклад українською мовою.
 
-cv2.imshow("Segmentation", result.plot())
-cv2.imshow("Tumor mask", mask)
-cv2.imshow("Tumor only", output)
+        Якщо користувач вводить ціле речення:
 
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+        1. Напиши переклад українською мовою.
+        2. Поясни граматичні конструкції речення.
+        3. Вкажи використаний граматичний час.
+        4. Поясни порядок слів та форми дієслів,
+           якщо це необхідно.
+
+        Приклади граматичних конструкцій:
+        - There is / There are
+        - Passive Voice
+        - Present Perfect
+        - Past Simple
+        - Conditional Sentences
+
+        Відповідай структуровано та зрозуміло.
+        Використовуй українську мову для пояснень.
+
+        Якщо користувач ставить звичайне запитання
+        щодо англійської граматики, також допоможи йому.
+        """
+    ),
+    ("human", "{question}")
+])
+
+
+
+chain = prompt | model
+
+
+
+print("    ПОМІЧНИК З ВИВЧЕННЯ АНГЛІЙСЬКОЇ")
+
+
+print("Введіть 'exit' для завершення роботи.\n")
+
+
+while True:
+
+    question = input("Ви: ").strip()
+
+    if question.lower() == "exit":
+        print("До побачення!")
+        break
+
+    if not question:
+        continue
+
+    try:
+        response = chain.invoke({
+            "question": question
+        })
+
+        print("Бот:")
+        print(response.content)
+
+    except Exception as e:
+        print(f"Помилка: {e}")
