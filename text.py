@@ -3,13 +3,11 @@ import os
 from dotenv import load_dotenv
 
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.prompts import ChatPromptTemplate
 
 
 load_dotenv()
 
 api_key = os.getenv("GEMINI_API_KEY")
-
 
 
 model = ChatGoogleGenerativeAI(
@@ -21,72 +19,46 @@ model = ChatGoogleGenerativeAI(
 )
 
 
-prompt = ChatPromptTemplate.from_messages([
-    (
-        "system",
-        """
-        Ти — помічник із вивчення англійської мови.
-
-        Твоє завдання — допомагати користувачеві
-        вивчати англійську мову.
-
-        Якщо користувач вітається, прощається
-        або просто спілкується з тобою:
-        - Відповідай природно та дружелюбно.
-        - Не перекладай такі повідомлення.
-        - Підтримуй діалог.
-
-        Якщо користувач вводить окреме слово
-        або коротку фразу:
-        1. Напиши переклад українською мовою.
-        2. Наведи приклад використання англійською.
-        3. Переклади приклад українською.
-
-        Якщо користувач вводить ціле речення:
-        1. Напиши переклад українською мовою.
-        2. Поясни граматичні конструкції речення.
-        3. Вкажи використаний граматичний час.
-        4. Поясни порядок слів та форми дієслів.
-
-        Якщо користувач ставить запитання
-        щодо англійської граматики:
-        - Дай зрозуміле пояснення.
-        - Наведи приклади.
-
-        Завжди використовуй українську мову
-        для відповідей.
-        """
-    ),
-    ("human", "{question}")
-])
 
 
-chain = prompt | model
+with open("data/lesson9/return_policy.txt", "r", encoding="utf-8") as file:
+    return_policy = file.read()
 
 
-print("     ПОМІЧНИК З ВИВЧЕННЯ АНГЛІЙСЬКОЇ")
+history = f"""Instruction:
+Ти — помічник служби підтримки магазину.
+Відповідай на запитання користувачів щодо повернення товарів.
+Керуйся правилами повернення, наведеними нижче.
+Відповідай українською мовою.
+Якщо інформації недостатньо, не вигадуй правила.
 
-print("Введіть 'exit' для завершення роботи")
+Правила повернення товару:
+{return_policy}
+
+"""
+
+
+print("Введіть порожній рядок для завершення діалогу.")
 
 
 while True:
 
     question = input("Ви: ").strip()
 
-    if question.lower() == "exit":
-        print("До побачення!")
+    if not question:
+        print("Діалог завершено.")
         break
 
-    if not question:
-        continue
-
     try:
-        response = chain.invoke({
-            "question": question
-        })
+        prompt = history + f"Human: {question}\nAI:"
 
-        print("Бот:")
-        print(response.text)
+        response = model.invoke(prompt)
+
+        answer = response.content
+
+        print(f"Бот: {answer}")
+
+        history = prompt + f" {answer}\n"
 
     except Exception as e:
         print(f"Помилка: {repr(e)}")
